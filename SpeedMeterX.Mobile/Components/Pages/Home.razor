@@ -1,0 +1,561 @@
+@page "/"
+@using SpeedMeterX.Mobile.Components
+@inject IJSRuntime JSRuntime
+@implements IAsyncDisposable
+
+<div class="speed-test-page">
+    <header class="header">
+        <h1>SpeedMeterX</h1>
+        <p class="subtitle">Test your internet connection speed</p>
+    </header>
+    
+    <div class="test-controls">
+        @if (_isRunning)
+        {
+            @if (_isPaused)
+            {
+                <button class="btn-resume" @onclick="ResumeTest">
+                    <span class="play-icon">&#9654;</span>
+                    Resume
+                </button>
+                <button class="btn-stop" @onclick="StopTest">
+                    <span class="stop-icon">&#9632;</span>
+                    Stop
+                </button>
+            }
+            else
+            {
+                <button class="btn-pause" @onclick="PauseTest">
+                    <span class="pause-icon">||</span>
+                    Pause
+                </button>
+            }
+        }
+        else if (_testComplete || _testStopped)
+        {
+            <button class="btn-restart" @onclick="StartTestAsync">
+                &#8635; Test Again
+            </button>
+        }
+    </div>
+    
+    <div class="status-message">@_statusMessage</div>
+    
+    @if (_isRunning)
+    {
+        <div class="progress-container">
+            <div class="progress-bar @(_isPaused ? "paused" : "")" style="width: @(_progressPercent)%"></div>
+        </div>
+    }
+    
+    <div class="gauges-container">
+        <div class="gauge-card">
+            <SpeedGauge Speed="@_currentDownloadSpeed" MaxSpeed="@_maxDisplaySpeed" Label="Download" />
+        </div>
+        
+        <div class="gauge-card">
+            <SpeedGauge Speed="@_currentUploadSpeed" MaxSpeed="@_maxDisplaySpeed" Label="Upload" />
+            @if (_uploadFailed && _testComplete)
+            {
+                <div class="upload-note">Unable to test (CORS)</div>
+            }
+        </div>
+        
+        <div class="ping-card">
+            <div class="ping-value">@(_pingLatency > 0 ? _pingLatency.ToString() : "--")</div>
+            <div class="ping-unit">ms</div>
+            <div class="ping-label">Ping</div>
+        </div>
+    </div>
+    
+    @if (_testComplete || _testStopped)
+    {
+        <div class="results-summary">
+            <h2>Test Results @(_testStopped ? "(Partial)" : "")</h2>
+            <div class="results-grid">
+                <div class="result-item">
+                    <span class="result-label">Download</span>
+                    <span class="result-value">@(_downloadResult?.AverageSpeedMbps.ToString("F2") ?? "N/A") Mbps</span>
+                    @if (_downloadResult != null)
+                    {
+                        <span class="result-detail">Max: @_downloadResult.MaxSpeedMbps.ToString("F2") Mbps</span>
+                    }
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Upload</span>
+                    @if (_uploadFailed || _uploadResult == null)
+                    {
+                        <span class="result-value result-unavailable">N/A</span>
+                        <span class="result-detail">@(_testStopped ? "Test stopped" : "Blocked by CORS policy")</span>
+                    }
+                    else
+                    {
+                        <span class="result-value">@_uploadResult.AverageSpeedMbps.ToString("F2") Mbps</span>
+                        <span class="result-detail">Max: @_uploadResult.MaxSpeedMbps.ToString("F2") Mbps</span>
+                    }
+                </div>
+                <div class="result-item">
+                    <span class="result-label">Ping</span>
+                    <span class="result-value">@(_pingLatency > 0 ? $"{_pingLatency} ms" : "N/A")</span>
+                    <span class="result-detail">@(_pingSuccess ? "Connected" : "Failed")</span>
+                </div>
+            </div>
+            <div class="test-info">
+                <span class="test-date">Tested on @_testDate.ToString("g")</span>
+                <span class="test-server">Server: Cloudflare CDN</span>
+            </div>
+        </div>
+    }
+    
+    <footer class="footer">
+        <p>Powered by Cloudflare CDN</p>
+    </footer>
+</div>
+
+<style>
+    .speed-test-page {
+        max-width: 900px;
+        margin: 0 auto;
+        padding: 1rem;
+        text-align: center;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background-color: #f5f5f5;
+    }
+    
+    .header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 1.5rem;
+        border-radius: 16px;
+        color: white;
+        margin-bottom: 1.5rem;
+    }
+    
+    .header h1 {
+        font-size: 2rem;
+        margin: 0 0 0.5rem 0;
+        font-weight: 700;
+    }
+    
+    .subtitle {
+        font-size: 1rem;
+        opacity: 0.9;
+        margin: 0;
+    }
+    
+    .test-controls {
+        margin-bottom: 1rem;
+        min-height: 50px;
+        display: flex;
+        justify-content: center;
+        gap: 0.75rem;
+    }
+    
+    .btn-pause, .btn-resume, .btn-stop, .btn-restart {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: transform 0.2s, box-shadow 0.2s;
+        font-weight: 600;
+    }
+    
+    .btn-pause {
+        background: linear-gradient(135deg, #f9ca24 0%, #f0932b 100%);
+        color: white;
+    }
+    
+    .btn-resume {
+        background: linear-gradient(135deg, #6bcb77 0%, #4ade80 100%);
+        color: white;
+    }
+    
+    .btn-stop {
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a24 100%);
+        color: white;
+    }
+    
+    .btn-restart {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    
+    .status-message {
+        color: #666;
+        font-size: 1rem;
+        margin-bottom: 1rem;
+        min-height: 1.5rem;
+    }
+    
+    .progress-container {
+        width: 100%;
+        height: 6px;
+        background: #e0e0e0;
+        border-radius: 3px;
+        margin-bottom: 1.5rem;
+        overflow: hidden;
+    }
+    
+    .progress-bar {
+        height: 100%;
+        background: linear-gradient(90deg, #667eea, #764ba2);
+        transition: width 0.3s ease-out;
+    }
+    
+    .progress-bar.paused {
+        background: linear-gradient(90deg, #f9ca24, #f0932b);
+    }
+    
+    .gauges-container {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+        margin-bottom: 1.5rem;
+    }
+    
+    .gauge-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        padding: 0.75rem;
+        min-width: 150px;
+        flex: 1;
+        max-width: 200px;
+    }
+    
+    .upload-note {
+        font-size: 0.7rem;
+        color: #999;
+        margin-top: 0.25rem;
+    }
+    
+    .ping-card {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        padding: 1rem 1.5rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-width: 100px;
+    }
+    
+    .ping-value {
+        font-size: 2rem;
+        font-weight: bold;
+        color: #333;
+    }
+    
+    .ping-unit {
+        font-size: 0.75rem;
+        color: #666;
+    }
+    
+    .ping-label {
+        margin-top: 0.25rem;
+        font-size: 0.9rem;
+        font-weight: 500;
+        color: #555;
+    }
+    
+    .results-summary {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        padding: 1.5rem;
+        margin-top: 0.5rem;
+    }
+    
+    .results-summary h2 {
+        margin: 0 0 1rem 0;
+        color: #333;
+        font-size: 1.25rem;
+    }
+    
+    .results-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 0.75rem;
+    }
+    
+    .result-item {
+        display: flex;
+        flex-direction: column;
+        padding: 0.75rem;
+        background: #f8f9fa;
+        border-radius: 12px;
+    }
+    
+    .result-label {
+        font-size: 0.7rem;
+        color: #666;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .result-value {
+        font-size: 1rem;
+        font-weight: bold;
+        color: #333;
+        margin: 0.25rem 0;
+    }
+    
+    .result-unavailable {
+        color: #999;
+    }
+    
+    .result-detail {
+        font-size: 0.65rem;
+        color: #888;
+    }
+    
+    .test-info {
+        margin-top: 1rem;
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    
+    .test-date, .test-server {
+        font-size: 0.7rem;
+        color: #888;
+    }
+    
+    .footer {
+        margin-top: auto;
+        padding-top: 1rem;
+        color: #999;
+        font-size: 0.75rem;
+    }
+    
+    .footer p {
+        margin: 0;
+    }
+</style>
+
+@code {
+    private bool _isRunning;
+    private bool _isPaused;
+    private bool _testComplete;
+    private bool _testStopped;
+    private bool _uploadFailed;
+    private string _statusMessage = "Starting speed test...";
+    private int _progressPercent;
+    private double _currentDownloadSpeed;
+    private double _currentUploadSpeed;
+    private double _maxDisplaySpeed = 100;
+    private long _pingLatency;
+    private bool _pingSuccess;
+    private SpeedResultJs? _downloadResult;
+    private SpeedResultJs? _uploadResult;
+    private DateTime _testDate;
+    
+    private DotNetObjectReference<Home>? _dotNetRef;
+
+    protected override void OnInitialized()
+    {
+        _dotNetRef = DotNetObjectReference.Create(this);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await Task.Delay(500);
+            await StartTestAsync();
+        }
+    }
+
+    private async Task StartTestAsync()
+    {
+        _isRunning = true;
+        _isPaused = false;
+        _testComplete = false;
+        _testStopped = false;
+        _uploadFailed = false;
+        _currentDownloadSpeed = 0;
+        _currentUploadSpeed = 0;
+        _pingLatency = 0;
+        _pingSuccess = false;
+        _progressPercent = 0;
+        _downloadResult = null;
+        _uploadResult = null;
+        
+        await JSRuntime.InvokeVoidAsync("SpeedTest.reset");
+        StateHasChanged();
+        
+        try
+        {
+            _statusMessage = "Testing latency...";
+            StateHasChanged();
+            
+            var pingResult = await JSRuntime.InvokeAsync<PingResultJs>("SpeedTest.measurePing");
+            _pingLatency = pingResult.LatencyMs;
+            _pingSuccess = pingResult.Success;
+            
+            if (!pingResult.Success)
+            {
+                _statusMessage = "Failed to connect. Check your internet connection.";
+                _isRunning = false;
+                StateHasChanged();
+                return;
+            }
+            
+            var isStopped = await JSRuntime.InvokeAsync<bool>("eval", "SpeedTest.isStopped");
+            if (isStopped)
+            {
+                await HandleTestStopped();
+                return;
+            }
+            
+            _statusMessage = "Testing download speed...";
+            StateHasChanged();
+            
+            _downloadResult = await JSRuntime.InvokeAsync<SpeedResultJs>(
+                "SpeedTest.measureDownload", 
+                _dotNetRef, 
+                10000);
+            
+            _currentDownloadSpeed = _downloadResult.AverageSpeedMbps;
+            
+            isStopped = await JSRuntime.InvokeAsync<bool>("eval", "SpeedTest.isStopped");
+            if (isStopped)
+            {
+                await HandleTestStopped();
+                return;
+            }
+            
+            _statusMessage = "Testing upload speed...";
+            _progressPercent = 50;
+            StateHasChanged();
+            
+            _uploadResult = await JSRuntime.InvokeAsync<SpeedResultJs>(
+                "SpeedTest.measureUpload", 
+                _dotNetRef, 
+                10000);
+            
+            _currentUploadSpeed = _uploadResult.AverageSpeedMbps;
+            _uploadFailed = !_uploadResult.Success;
+            
+            isStopped = await JSRuntime.InvokeAsync<bool>("eval", "SpeedTest.isStopped");
+            if (isStopped)
+            {
+                await HandleTestStopped();
+                return;
+            }
+            
+            var maxMeasured = Math.Max(
+                _downloadResult?.MaxSpeedMbps ?? 0,
+                _uploadResult?.MaxSpeedMbps ?? 0);
+            _maxDisplaySpeed = Math.Max(100, Math.Ceiling(maxMeasured / 50) * 50);
+            
+            _testDate = DateTime.Now;
+            _testComplete = true;
+            _statusMessage = _uploadFailed 
+                ? "Test complete! (Upload blocked by browser security)"
+                : "Test complete!";
+            _progressPercent = 100;
+        }
+        catch (JSException ex)
+        {
+            _statusMessage = $"Test failed: {ex.Message}";
+        }
+        catch (Exception ex)
+        {
+            _statusMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            _isRunning = false;
+            _isPaused = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task HandleTestStopped()
+    {
+        _testDate = DateTime.Now;
+        _testStopped = true;
+        _isRunning = false;
+        _isPaused = false;
+        
+        var maxMeasured = Math.Max(
+            _downloadResult?.MaxSpeedMbps ?? 0,
+            _uploadResult?.MaxSpeedMbps ?? 0);
+        if (maxMeasured > 0)
+        {
+            _maxDisplaySpeed = Math.Max(100, Math.Ceiling(maxMeasured / 50) * 50);
+        }
+        
+        _statusMessage = "Test stopped";
+        StateHasChanged();
+    }
+
+    private async Task PauseTest()
+    {
+        _isPaused = true;
+        _statusMessage = "Test paused";
+        await JSRuntime.InvokeVoidAsync("SpeedTest.pause");
+        StateHasChanged();
+    }
+
+    private async Task ResumeTest()
+    {
+        _isPaused = false;
+        _statusMessage = "Resuming...";
+        await JSRuntime.InvokeVoidAsync("SpeedTest.resume");
+        StateHasChanged();
+    }
+
+    private async Task StopTest()
+    {
+        await JSRuntime.InvokeVoidAsync("SpeedTest.stop");
+        _statusMessage = "Stopping...";
+        StateHasChanged();
+    }
+
+    [JSInvokable]
+    public void OnDownloadProgress(double speedMbps, int progress)
+    {
+        _currentDownloadSpeed = speedMbps;
+        _progressPercent = progress / 2;
+        if (!_isPaused)
+        {
+            _statusMessage = $"Download: {speedMbps:F1} Mbps";
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public void OnUploadProgress(double speedMbps, int progress)
+    {
+        _currentUploadSpeed = speedMbps;
+        _progressPercent = 50 + (progress / 2);
+        if (!_isPaused)
+        {
+            _statusMessage = $"Upload: {speedMbps:F1} Mbps";
+        }
+        InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync("SpeedTest.stop");
+        }
+        catch { }
+        _dotNetRef?.Dispose();
+    }
+
+    private record PingResultJs(long LatencyMs, bool Success);
+    private record SpeedResultJs(double AverageSpeedMbps, double MaxSpeedMbps, long TotalBytes, bool Success);
+}

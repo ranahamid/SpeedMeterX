@@ -1,0 +1,106 @@
+@namespace SpeedMeterX.Mobile.Components
+
+<div class="speed-gauge-container">
+    <svg viewBox="0 0 200 120" class="speed-gauge">
+        <!-- Background arc -->
+        <path d="M 20 100 A 80 80 0 0 1 180 100" 
+              fill="none" 
+              stroke="#e0e0e0" 
+              stroke-width="12"
+              stroke-linecap="round"/>
+        
+        <!-- Speed arc (colored based on speed) -->
+        <path d="M 20 100 A 80 80 0 0 1 180 100" 
+              fill="none" 
+              stroke="url(#speedGradient)" 
+              stroke-width="12"
+              stroke-linecap="round"
+              stroke-dasharray="@ArcLength"
+              stroke-dashoffset="@DashOffset"
+              class="speed-arc"/>
+        
+        <!-- Gradient definition -->
+        <defs>
+            <linearGradient id="speedGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" style="stop-color:#ff6b6b" />
+                <stop offset="50%" style="stop-color:#ffd93d" />
+                <stop offset="100%" style="stop-color:#6bcb77" />
+            </linearGradient>
+        </defs>
+        
+        <!-- Speed value -->
+        <text x="100" y="85" text-anchor="middle" class="speed-value">@SpeedDisplay</text>
+        <text x="100" y="105" text-anchor="middle" class="speed-unit">@Unit</text>
+    </svg>
+    
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <div class="gauge-label">@Label</div>
+    }
+</div>
+
+<style>
+    .speed-gauge-container {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 1rem;
+    }
+    
+    .speed-gauge {
+        width: 200px;
+        height: 120px;
+    }
+    
+    .speed-arc {
+        transition: stroke-dashoffset 0.3s ease-out;
+    }
+    
+    .speed-value {
+        font-size: 2rem;
+        font-weight: bold;
+        fill: #333;
+    }
+    
+    .speed-unit {
+        font-size: 0.875rem;
+        fill: #666;
+    }
+    
+    .gauge-label {
+        margin-top: 0.5rem;
+        font-size: 1rem;
+        font-weight: 500;
+        color: #555;
+    }
+</style>
+
+@code {
+    [Parameter]
+    public double Speed { get; set; }
+    
+    [Parameter]
+    public double MaxSpeed { get; set; } = 100;
+    
+    [Parameter]
+    public string Unit { get; set; } = "Mbps";
+    
+    [Parameter]
+    public string? Label { get; set; }
+    
+    private string SpeedDisplay => Speed.ToString("F1");
+    
+    private const double TotalArcLength = 251;
+    
+    private string ArcLength => $"{TotalArcLength} {TotalArcLength}";
+    
+    private string DashOffset
+    {
+        get
+        {
+            var percentage = Math.Min(Speed / MaxSpeed, 1.0);
+            var offset = TotalArcLength * (1 - percentage);
+            return offset.ToString("F2", System.Globalization.CultureInfo.InvariantCulture);
+        }
+    }
+}
