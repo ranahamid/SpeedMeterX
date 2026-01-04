@@ -1,4 +1,4 @@
-# SpeedMeterX ??
+# SpeedMeterX
 
 A modern, real-time internet speed test application built with **Blazor** and **.NET Aspire**. Test your download speed, upload speed, and ping latency with a beautiful, responsive UI.
 
@@ -6,13 +6,13 @@ A modern, real-time internet speed test application built with **Blazor** and **
 
 ## Features
 
-- ?? **Download Speed Test** - Measures download speed using Cloudflare's global CDN
-- ?? **Upload Speed Test** - Tests upload bandwidth (when CORS permits)
-- ?? **Ping/Latency Test** - Measures round-trip time to the server
-- ?? **Pause/Resume** - Pause the test and resume where you left off
-- ?? **Beautiful UI** - Animated speed gauges with real-time updates
-- ?? **Responsive Design** - Works on desktop and mobile devices
-- ?? **Auto-start** - Test begins automatically when you open the page
+- **Download Speed Test** - Measures download speed using Cloudflare's global CDN
+- **Upload Speed Test** - Tests upload bandwidth (when CORS permits)
+- **Ping/Latency Test** - Measures round-trip time to the server
+- **Pause/Resume** - Pause the test and resume where you left off
+- **Beautiful UI** - Animated speed gauges with real-time updates
+- **Responsive Design** - Works on desktop and mobile devices
+- **Auto-start** - Test begins automatically when you open the page
 
 ## Tech Stack
 
@@ -33,7 +33,7 @@ A modern, real-time internet speed test application built with **Blazor** and **
 ### Clone the Repository
 
 ```bash
-git clone https://github.com/yourusername/SpeedMeterX.git
+git clone https://github.com/ranahamid/SpeedMeterX.git
 cd SpeedMeterX
 ```
 
@@ -59,19 +59,19 @@ dotnet run
 
 ```
 SpeedMeterX/
-??? SpeedMeterX.AppHost/        # .NET Aspire orchestration
-??? SpeedMeterX.Web/            # Blazor Server frontend
-?   ??? Components/
-?   ?   ??? Pages/
-?   ?   ?   ??? Home.razor      # Main speed test page
-?   ?   ??? SpeedGauge.razor    # Speed gauge component
-?   ?   ??? Layout/
-?   ??? wwwroot/
-?       ??? js/
-?           ??? speedtest.js    # Client-side speed test logic
-??? SpeedMeterX.ApiService/     # Backend API service
-??? SpeedMeterX.ServiceDefaults/# Shared service configuration
-??? SpeedMeterX.Tests/          # Unit tests
+|-- SpeedMeterX.AppHost/         # .NET Aspire orchestration
+|-- SpeedMeterX.Web/             # Blazor Server frontend
+|   |-- Components/
+|   |   |-- Pages/
+|   |   |   |-- Home.razor       # Main speed test page
+|   |   |-- SpeedGauge.razor     # Speed gauge component
+|   |   |-- Layout/
+|   |-- wwwroot/
+|       |-- js/
+|           |-- speedtest.js     # Client-side speed test logic
+|-- SpeedMeterX.ApiService/      # Backend API service
+|-- SpeedMeterX.ServiceDefaults/ # Shared service configuration
+|-- SpeedMeterX.Tests/           # Unit tests
 ```
 
 ## How It Works
@@ -150,6 +150,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Author
 
-Your Name - [@yourusername](https://twitter.com/yourusername)
+Hamid - [@ranahamid](https://github.com/ranahamid)
 
-Project Link: [https://github.com/yourusername/SpeedMeterX](https://github.com/yourusername/SpeedMeterX)
+Project Link: [https://github.com/ranahamid/SpeedMeterX](https://github.com/ranahamid/SpeedMeterX)
