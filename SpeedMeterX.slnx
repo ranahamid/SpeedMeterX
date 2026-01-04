@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="SpeedMeterX.ApiService/SpeedMeterX.ApiService.csproj" />
+  <Project Path="SpeedMeterX.AppHost/SpeedMeterX.AppHost.csproj" />
+  <Project Path="SpeedMeterX.ServiceDefaults/SpeedMeterX.ServiceDefaults.csproj" />
+  <Project Path="SpeedMeterX.Tests/SpeedMeterX.Tests.csproj" />
+  <Project Path="SpeedMeterX.Web/SpeedMeterX.Web.csproj" />
+</Solution>
